@@ -1,0 +1,4 @@
+import {notFound} from 'next/navigation';
+import {requireOrganization} from '@/features/auth/guards';
+import {JobEditor} from '@/features/jobs/editor';
+export default async function Page({params}:{params:Promise<{id:string;jobId:string}>}){const {id,jobId}=await params;const {db}=await requireOrganization(id);const [{data:j,error},{data:branches,error:be},{data:skills,error:se},{data:rules,error:re}]=await Promise.all([db.from('jobs').select('*').eq('id',jobId).eq('organization_id',id).maybeSingle(),db.from('branches').select('*').eq('organization_id',id),db.from('job_skills').select('name').eq('job_id',jobId).order('position'),db.from('minimum_wage_rules').select('*')]);if(error||be||se||re)throw new Error('Không tải được tin.');if(!j)notFound();return <JobEditor org={id} id={jobId} status={j.status} initial={{...j,branch_id:j.branch_id??'',skills:skills?.map(s=>s.name)??[]}} branches={branches??[]} rules={rules??[]}/>;}

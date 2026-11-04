@@ -1,0 +1,6 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {questionSchema,questionWindow} from '../src/features/microtest/schema.ts';
+const question={kind:'mcq',prompt:'Tình huống',options:['A','B'],correct_index:1,min_seconds:10,max_seconds:30,active:true};
+test('question configuration enforces times and exact answer index',()=>{assert.equal(questionSchema.safeParse(question).success,true);for(const data of [{...question,max_seconds:5},{...question,correct_index:0},{...question,correct_index:3},{...question,correct_index:null},{...question,options:['A']}])assert.equal(questionSchema.safeParse(data).success,false);assert.equal(questionSchema.safeParse({...question,kind:'written',options:[],correct_index:null}).success,true);});
+test('timer boundaries: start inclusive, deadline exclusive',()=>{const start='2026-11-05T00:00:00Z',end='2026-11-05T00:00:30Z';assert.equal(questionWindow(Date.parse(start)-1,start,end),'waiting');assert.equal(questionWindow(Date.parse(start),start,end),'open');assert.equal(questionWindow(Date.parse(end)-1,start,end),'open');assert.equal(questionWindow(Date.parse(end),start,end),'closed');assert.equal(questionWindow(0,null,null),'waiting');});

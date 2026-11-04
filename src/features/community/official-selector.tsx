@@ -1,0 +1,2 @@
+import {requireUser} from '@/features/auth/guards';
+export async function OfficialSelector(){const {db}=await requireUser();const {data,error}=await db.from('organizations').select('id,name').eq('verification_status','verified').order('name').limit(100);if(error)throw new Error('Không tải được tổ chức đại diện.');return <label>Đại diện tổ chức<select name="official" className="block w-full border bg-surface p-2"><option value="">Phản hồi cá nhân</option>{data?.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>;}

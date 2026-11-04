@@ -1,0 +1,23 @@
+name: VETT checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  local-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: node --test scripts/deploy/check-env.test.mjs
+      - run: npm run build
+      - run: bash supabase/test-support/run.sh
+      - run: node scripts/deploy/migration-manifest.mjs
+      # No deploy step, production credentials or automatic migration here.

@@ -1,0 +1,6 @@
+'use server';
+import {z} from 'zod';
+import {requireOrganization} from '@/features/auth/guards';
+import {revalidatePath} from 'next/cache';
+export async function updateOrganization(form:FormData){const org=z.uuid().parse(form.get('org'));const {db}=await requireOrganization(org,true);const {data:old}=await db.from('organizations').select('logo_path').eq('id',org).single();const {error}=await db.rpc('update_organization',{org,company_name:String(form.get('name')),company_tax_id:String(form.get('tax_id')),company_address:String(form.get('address')),company_logo:old?.logo_path??null});if(error)return {error:'Không thể lưu doanh nghiệp. Kiểm tra dữ liệu và quyền quản trị.'};revalidatePath(`/organization/${org}`);revalidatePath('/jobs');return {message:'Đã lưu. Thay đổi tên/MST/địa chỉ cần được xác minh lại.'};}
+export async function addBranch(form:FormData){const org=z.uuid().parse(form.get('org'));const {db}=await requireOrganization(org,true);const {error}=await db.rpc('add_branch',{org,branch_name:String(form.get('name')),branch_address:String(form.get('address')),province:String(form.get('province')),district:String(form.get('district')),region:null});if(error)return {error:'Không thể thêm chi nhánh. Điền đầy đủ tên và địa chỉ.'};revalidatePath(`/organization/${org}`);return {message:'Đã thêm chi nhánh.'};}

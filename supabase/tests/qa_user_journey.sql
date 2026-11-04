@@ -1,0 +1,31 @@
+begin;
+insert into auth.users(id,email,email_confirmed_at) values('00000000-0000-4000-8000-000000000201','qa-candidate@test.test',now()),('00000000-0000-4000-8000-000000000202','qa-hr@test.test',now());
+insert into public.candidate_profiles(user_id,display_name,district,province,desired_position,work_mode,salary,salary_unit,skills) values('00000000-0000-4000-8000-000000000201','QA','Q1','TP','Tester','onsite',100,'month',array['A','B','C']);
+insert into public.organizations(id,name,verification_status) values('10000000-0000-4000-8000-000000000201','QA Org','verified');
+insert into public.organization_members(organization_id,user_id,role) values('10000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000202','org_admin');
+insert into public.jobs(id,organization_id,title,status) values('20000000-0000-4000-8000-000000000201','10000000-0000-4000-8000-000000000201','QA Job','published');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000201',true);
+select public.set_saved_job('20000000-0000-4000-8000-000000000201',true);
+select set_config('qa.application',public.apply_to_job('20000000-0000-4000-8000-000000000201')::text,true);
+do $$ begin if public.apply_to_job('20000000-0000-4000-8000-000000000201')<>current_setting('qa.application')::uuid then raise exception 'duplicate application journey';end if;end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000202',true);
+do $$ begin if exists(select 1 from public.saved_jobs) then raise exception 'HR learns saved job';end if;end $$;
+select public.review_application(current_setting('qa.application')::uuid,'submitted','under_review');
+select public.review_application(current_setting('qa.application')::uuid,'under_review','interview_invited','Mời phỏng vấn');
+select set_config('qa.interview',public.propose_interview(current_setting('qa.application')::uuid,now()+interval '2 days','Asia/Ho_Chi_Minh','Office')::text,true);
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000201',true);
+select public.respond_interview(current_setting('qa.interview')::uuid,1,'confirmed',false);
+do $$ declare inbox jsonb;begin
+ inbox:=public.notification_inbox();if (inbox->>'total')::integer<3 then raise exception 'journey notifications missing';end if;
+ if not exists(select 1 from public.cv_consents where application_id=current_setting('qa.application')::uuid and not decision) then raise exception 'explicit refusal missing';end if;
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000202',true);
+do $$ begin
+ begin perform public.authorize_interview_cv(current_setting('qa.application')::uuid);raise exception 'CV disclosed without consent';exception when raise_exception then if sqlerrm<>'forbidden' then raise;end if;end;
+end $$;
+reset role;
+delete from public.organization_members where user_id='00000000-0000-4000-8000-000000000202';
+set local role authenticated;
+do $$ begin if exists(select 1 from public.applications where id=current_setting('qa.application')::uuid) then raise exception 'revoked HR sees application';end if;end $$;
+rollback;

@@ -1,0 +1,6 @@
+import Link from 'next/link';
+import {requireUser} from '@/features/auth/guards';
+import {organizationAction} from '@/features/auth/actions';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+export default async function Page(){const {db}=await requireUser();const {data,error}=await db.from('organization_members').select('organization_id,role');if(error)throw new Error('Không tải được danh sách tổ chức.');return <div className="space-y-6"><h2 className="text-xl font-bold">Tổ chức của bạn</h2>{data?.length?data.map(m=><p key={m.organization_id}><Link href={`/organization/${m.organization_id}`}>{m.organization_id} — {m.role}</Link></p>):<p>Chưa tham gia tổ chức nào.</p>}<form action={organizationAction} className="space-y-3"><input type="hidden" name="operation" value="create"/><label htmlFor="name">Tên tổ chức mới</label><Input id="name" name="name" required maxLength={200}/><Button>Tạo tổ chức</Button></form><form action={organizationAction} className="space-y-3"><label htmlFor="org">Mã tổ chức được doanh nghiệp cung cấp</label><Input id="org" name="organization_id" required/><Button variant="outline">Yêu cầu tham gia</Button><p>Yêu cầu cần được quản trị viên tổ chức duyệt.</p></form></div>;}

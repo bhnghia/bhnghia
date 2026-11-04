@@ -1,0 +1,32 @@
+begin;
+insert into auth.users(id,email,email_confirmed_at) values('00000000-0000-4000-8000-000000000091','a91@test.test',now()),('00000000-0000-4000-8000-000000000092','a92@test.test',now());
+insert into public.community_moderators values('00000000-0000-4000-8000-000000000092');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000091',true);
+select set_config('test.item',public.community_create(null,'Hỏi đáp','Nội dung',true,'Doanh nghiệp','Vị trí')::text,true);
+do $$ begin
+ if (public.community_feed()->>'total')::integer<>0 then raise exception 'pending public';end if;
+ begin perform * from public.community_items;raise exception 'identity leak';exception when insufficient_privilege then null;end;
+ begin perform public.community_moderate(current_setting('test.item')::uuid,'visible','fake');raise exception 'mod escalation';exception when raise_exception then if sqlerrm<>'forbidden' then raise;end if;end;
+ begin perform public.community_create(null,'Fake','Fake',false,'','','10000000-0000-4000-8000-000000000091');raise exception 'official spoof';exception when raise_exception then if sqlerrm<>'official forbidden' then raise;end if;end;
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000092',true);
+select public.community_moderate(current_setting('test.item')::uuid,'visible','Duyệt');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000091',true);
+select public.community_interact(current_setting('test.item')::uuid,'vote',1);
+select public.community_interact(current_setting('test.item')::uuid,'vote',1);
+select public.community_interact(current_setting('test.item')::uuid,'save');
+do $$ declare payload jsonb;begin
+ payload:=public.community_feed();
+ if payload::text like '%author_id%' or payload::text like '%a91@test.test%' or payload->'items'->0->>'display_name'<>'Ẩn danh' then raise exception 'anonymous leak';end if;
+ if (payload->'items'->0->>'votes')::integer<>1 then raise exception 'duplicate vote';end if;
+ if (public.community_feed(null,'','','','saved')->>'total')::integer<>1 then raise exception 'save';end if;
+end $$;
+select set_config('test.reply',public.community_create(current_setting('test.item')::uuid,'','Trả lời',true,'','')::text,true);
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000092',true);
+do $$ begin if (public.community_feed(null,'','','','saved')->>'total')::integer<>0 then raise exception 'private saves leak';end if;end $$;
+select public.community_moderate(current_setting('test.reply')::uuid,'visible','Duyệt');
+select public.community_moderate(current_setting('test.item')::uuid,'hidden','Ẩn');
+do $$ begin if (public.community_feed(current_setting('test.reply')::uuid)->>'total')::integer<>0 then raise exception 'hidden ancestor leak';end if;end $$;
+select public.community_moderate(current_setting('test.item')::uuid,'visible','Khôi phục');
+rollback;

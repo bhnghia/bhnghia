@@ -1,0 +1,11 @@
+# Trust & Safety MVP
+
+Đọc PRD/USER_FLOWS và Q-06/Q-07: ba báo cáo đủ điều kiện từ ba đối tác trong 12 tháng là ngưỡng xem xét riêng tư, không phải kết tội. Không có cảnh báo tiêu cực công khai tự động. Chỉ qualified có nhóm độc lập do moderator xác minh mới được tính; appealed/dismissed/cancelled bị loại. Cửa sổ dựa occurred_at, từ mốc hiện tại trừ 12 tháng lịch, bao gồm hai đầu. Count bị giới hạn cả số nhóm độc lập và số đối tác (ứng viên hoặc reporting_org), không đếm nhiều HR cùng org thành nhiều đối tác. Moderator phải rà soát thông đồng/trả đũa và nhóm các đối tác liên quan; chưa có công cụ xác minh danh tính ngoài hệ thống. Đây là mặc định Q-06 cần chốt trước phát hành.
+
+Candidate báo cáo doanh nghiệp/Job; HR chỉ báo cáo candidate đã ứng tuyển Job của mình. Unique reporter/Job/category chống gửi trùng, trả ID cũ khi retry; tối đa 5 report/ngày, khóa profile để tuần tự hóa quota. Báo cáo chưa phát sinh application vẫn được gửi cho Job nghi lừa đảo. Bằng chứng MVP là văn bản/mô tả nguồn, chưa upload file. Chỉ reporter/moderator thấy bằng chứng; subject thấy tóm tắt, quyết định và có thể giải trình. Không có bảng raw nào cho client đọc trực tiếp.
+
+Moderator được cấp trong safety_moderators qua quản trị DB; không tự cấp qua client. Chặn moderator là người báo cáo, subject hoặc HR của bên báo cáo tự quyết định. Quyết định có reason/audit; appeal chuyển trạng thái về chờ xem xét, loại khỏi ngưỡng. Subject có thể gửi giải trình/yêu cầu xem xét lại, tối đa 5 phản hồi/ngày. Chưa đặt SLA, retention hoặc tự xóa (Q-07).
+
+Nguy cơ nghiêm trọng cho phép moderator tạm giữ Job: published chuyển paused, safety_hold chặn HR xuất bản lại. Gỡ hold cần quản trị rà soát và cập nhật riêng; chưa có workflow tự khôi phục sau appeal. Quyết định đủ điều kiện không tự đánh strike/khóa tài khoản. Các số đếm chỉ trong vụ việc được phép xem.
+
+UI `/safety`, `/safety/[id]`: report form, queue, evidence, responses/appeal, lịch sử và safety status. Notifications report_result được ghi cho reporter; liên kết report cần adapter quyền. Test trust_safety.sql kiểm rolling 12 months, nhóm độc lập, trùng, appeal, moderation, evidence riêng và truy cập trái phép. Chưa kiểm Supabase HTTP/browser thật.

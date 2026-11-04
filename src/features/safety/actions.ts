@@ -1,0 +1,4 @@
+'use server';
+import {requireUser} from '@/features/auth/guards';
+import {revalidatePath} from 'next/cache';
+export async function safetyAction(f:FormData){const {db}=await requireUser();const op=f.get('operation');const result=op==='file'?await db.rpc('safety_file',{job:f.get('job'),candidate:f.get('candidate')||null,category_name:f.get('category'),description:f.get('summary'),proof:f.get('evidence'),incident_time:f.get('time')}):op==='decide'?await db.rpc('safety_decide',{report:f.get('report'),target:f.get('target'),reason:f.get('reason'),independent_group:f.get('group')||null,hold_job:f.get('hold')==='on'}):await db.rpc('safety_respond',{report:f.get('report'),response_kind:f.get('kind'),content:f.get('body')});if(result.error)return {error:'Không thực hiện được: kiểm tra quyền, trạng thái, dữ liệu hoặc hạn mức gửi.'};revalidatePath('/safety');return {message:'Đã ghi nhận.',...(op==='file'?{href:`/safety/${result.data}`}:{})};}
